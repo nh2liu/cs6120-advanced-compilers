@@ -3,7 +3,6 @@ mod parsing;
 mod types;
 
 use cfg::CFG;
-use itertools::Itertools;
 use parsing::parse_bril;
 use std::{
     fs::read_to_string,
@@ -28,7 +27,6 @@ fn main() {
     let functions = parse_bril(&bril_file);
     functions.unwrap().into_iter().for_each(|x| {
         let cfg = CFG::from_function(&x);
-        println!("{:?}", cfg.graph);
-        println!("{:?}", cfg.blocks);
+        println!("{}", cfg);
     });
 }
