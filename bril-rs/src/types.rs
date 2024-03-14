@@ -7,22 +7,25 @@ pub enum BrilType {
     Nil,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum BrilValue {
     Bool(bool),
     Int(i64),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum InstructionType {
     Label { name: String },
     Const,
     Call,
     Ret,
+    Jmp,
+    Br,
     Print,
     Unknown { op: String },
 }
 
+#[derive(Clone)]
 pub struct Instruction {
     pub op: InstructionType,
     pub dest: Option<String>,

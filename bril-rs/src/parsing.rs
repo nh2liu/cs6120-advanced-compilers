@@ -34,6 +34,8 @@ impl Instruction {
                     "const" => InstructionType::Const,
                     "print" => InstructionType::Print,
                     "ret" => InstructionType::Ret,
+                    "br" => InstructionType::Br,
+                    "jmp" => InstructionType::Jmp,
                     _ => InstructionType::Unknown {
                         op: op_name.to_string(),
                     },
