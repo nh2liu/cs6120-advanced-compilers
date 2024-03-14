@@ -1,9 +1,13 @@
-use crate::types::{BrilType, BrilValue, Function, Instruction};
+use crate::types::{BrilType, BrilValue, Function, Instruction, InstructionType};
 use itertools::Itertools;
 use serde_json::Value;
 
 fn as_str(v: &Value) -> String {
     v.as_str().unwrap_or("").to_string()
+}
+
+fn as_str_option(v: &Value) -> Option<String> {
+    v.as_str().map(|x| x.to_string())
 }
 
 fn to_bril_type(str: &str) -> BrilType {
@@ -15,48 +19,52 @@ fn to_bril_type(str: &str) -> BrilType {
     }
 }
 
-pub fn parse_bril_instr<'a>(json_value: &'a Value) -> Instruction {
-    let get_str_arr = |field| {
-        json_value[field]
-            .as_array()
-            .map_or(vec![], |x| x.into_iter().map(as_str).collect_vec())
-    };
-    let get_dest = || as_str(&json_value["dest"]);
+impl Instruction {
+    fn from_json(json_value: &Value) -> Instruction {
+        let get_str_arr_option = |field| {
+            json_value[field]
+                .as_array()
+                .map(|x| x.into_iter().map(as_str).collect_vec())
+        };
 
-    if let Some(op_name) = json_value["op"].as_str() {
-        match op_name {
-            "call" => Instruction::Call {
-                args: get_str_arr("args"),
-                dest: get_dest(),
+        Instruction {
+            op: if let Some(op_name) = json_value["op"].as_str() {
+                match op_name {
+                    "call" => InstructionType::Call,
+                    "const" => InstructionType::Const,
+                    "print" => InstructionType::Print,
+                    "ret" => InstructionType::Ret,
+                    _ => InstructionType::Unknown {
+                        op: op_name.to_string(),
+                    },
+                }
+            } else if let Some(label_name) = json_value["label"].as_str() {
+                InstructionType::Label {
+                    name: label_name.to_string(),
+                }
+            } else {
+                panic!("Invalid instruction: {:?}", json_value)
             },
-            "const" => Instruction::Const {
-                dest: get_dest(),
-                value: match as_str(&json_value["type"]).as_str() {
-                    "int" => BrilValue::Int(json_value["value"].as_i64().unwrap()),
-                    "bool" => BrilValue::Bool(json_value["value"].as_bool().unwrap()),
-                    t => panic!("invalid type: {}", t),
-                },
+            dest: as_str_option(&json_value["dest"]),
+            value: {
+                if let Some(v) = json_value.get("value") {
+                    if let Some(t) = json_value["type"].as_str() {
+                        Some(match t {
+                            "int" => BrilValue::Int(v.as_i64().unwrap()),
+                            "bool" => BrilValue::Bool(v.as_bool().unwrap()),
+                            t => panic!("invalid type: {}", t),
+                        });
+                    } else {
+                        panic!("No type associated with {v}")
+                    }
+                }
+                None
             },
-            "print" => Instruction::Print {
-                args: get_str_arr("args"),
-            },
-            "ret" => Instruction::Ret {
-                args: get_str_arr("args"),
-            },
-            _ => Instruction::GenericFunction {
-                dest: get_dest(),
-                btype: as_str(&json_value["type"]),
-                args: get_str_arr("args"),
-                funcs: get_str_arr("funcs"),
-                labels: get_str_arr("labels"),
-            },
+            r#type: as_str_option(&json_value["type"]),
+            args: get_str_arr_option("args"),
+            funcs: get_str_arr_option("funcs"),
+            labels: get_str_arr_option("labels"),
         }
-    } else if let Some(label_name) = json_value["label"].as_str() {
-        Instruction::Label {
-            name: label_name.to_string(),
-        }
-    } else {
-        panic!("Invalid instruction: {:?}", json_value)
     }
 }
 
@@ -69,7 +77,7 @@ pub fn parse_bril_fn(json_value: &Value) -> Function {
             .as_array()
             .unwrap()
             .into_iter()
-            .map(parse_bril_instr)
+            .map(Instruction::from_json)
             .collect_vec(),
     }
 }
