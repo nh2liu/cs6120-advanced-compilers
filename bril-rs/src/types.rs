@@ -4,7 +4,15 @@ use std::fmt::Formatter;
 pub enum BrilType {
     Bool,
     Int,
-    Nil,
+}
+
+impl BrilType {
+    pub fn to_str(&self) -> &str {
+        match self {
+            BrilType::Bool => "bool",
+            BrilType::Int => "int",
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -85,7 +93,7 @@ impl std::fmt::Debug for Instruction {
 #[derive(Debug)]
 pub struct Function {
     pub name: String,
-    pub args: Vec<String>,
-    pub ret_type: BrilType,
+    pub args: Vec<(String, BrilType)>,
+    pub ret_type: Option<BrilType>,
     pub instructions: Vec<Instruction>,
 }
